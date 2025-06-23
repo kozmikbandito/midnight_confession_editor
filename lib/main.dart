@@ -7,12 +7,15 @@ Future<void> main() async {
   // Bu satır, Flutter'ın Supabase'i başlatmadan önce hazır olmasını sağlar.
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Supabase'i başlatıyoruz.
+  // Değişkenleri ortamdan okuyoruz.
+  const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  const supabaseKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+
   await Supabase.initialize(
-    url: 'https://bvtvyuqdemsdbdxyympq.supabase.co',      // Buraya Supabase projenin URL'sini yapıştır.
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJ2dHZ5dXFkZW1zZGJkeHl5bXBxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTA2ODA0OTUsImV4cCI6MjA2NjI1NjQ5NX0.8FjhUdhCNSDd_tsBRoWyCiU10Ylzjk0N84rpPwNYB6Y', // Buraya Supabase projenin 'anon' key'ini yapıştır.
+    url: supabaseUrl,
+    anonKey: supabaseKey,
   );
-  
+
   runApp(const MidnightConfessionApp());
 }
 
