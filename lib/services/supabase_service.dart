@@ -1,86 +1,140 @@
+// lib/services/supabase_service.dart
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Bu sınıf, Supabase ile ilgili tüm veritabanı işlemlerini tek bir yerde toplar.
 class SupabaseService {
   final _supabase = Supabase.instance.client;
 
-  // --- Veri Çekme (SELECT) Fonksiyonları ---
+  // --- YENİ SİSTEM ---
 
+  /// Belirli bir vakaya ait tüm düğümleri (şahıs, mekan vb.) çeker.
+  Future<List<Map<String, dynamic>>> fetchNodesForCase(int caseId) async {
+    return await _supabase
+        .from('nodes')
+        .select()
+        .eq('case_id', caseId)
+        .order('created_at', ascending: true);
+  }
+
+  // TODO: Düğümler arasındaki ilişkileri çekecek fonksiyonu buraya ekleyeceğiz.
+  // Future<List<Map<String, dynamic>>> fetchRelationshipsForCase(int caseId) async { ... }
+/// Belirli bir vakaya ait tüm ilişkileri (çizgileri) çeker.
+  Future<List<Map<String, dynamic>>> fetchRelationshipsForCase(int caseId) async {
+    return await _supabase
+        .from('relationships')
+        .select()
+        .eq('case_id', caseId);
+  }
+
+  /// Veritabanına yeni bir düğüm (şahıs, mekan vb.) ekler.
+  Future<void> addNode({
+    required int caseId,
+    required String nodeType,
+    required Map<String, dynamic> displayData,
+    required Map<String, dynamic> engineData,
+  }) async {
+    await _supabase.from('nodes').insert({
+      'case_id': caseId,
+      'node_type': nodeType,
+      'display_data': displayData,
+      'engine_data': engineData,
+    });
+  }
+
+  /// Veritabanına yeni bir ilişki (çizgi) ekler.
+  Future<void> addRelationship({
+    required int caseId,
+    required String sourceNodeId,
+    required String targetNodeId,
+    required String relationshipType,
+    Map<String, dynamic>? relationshipData,
+  }) async {
+    await _supabase.from('relationships').insert({
+      'case_id': caseId,
+      'source_node_id': sourceNodeId,
+      'target_node_id': targetNodeId,
+      'relationship_type': relationshipType,
+      'relationship_data': relationshipData,
+    });
+  }
+/// Veritabanındaki bir ilişkinin verilerini günceller.
+  Future<void> updateRelationship({
+    required String relationshipId,
+    required Map<String, dynamic> relationshipData,
+  }) async {
+    await _supabase.from('relationships').update({
+      'relationship_data': relationshipData
+    }).match({'id': relationshipId});
+  }
+/// Veritabanındaki bir düğümün verilerini günceller.
+  Future<void> updateNode({
+    required String nodeId,
+    required Map<String, dynamic> data, // Artık tüm güncellemeyi tek bir map'te alıyoruz
+  }) async {
+    await _supabase.from('nodes').update(data).match({'id': nodeId});
+  }
+
+
+  // --- ESKİ SİSTEM (Hala İhtiyacımız Olanlar) ---
+
+  /// Vaka listesini çeker. Bu fonksiyon hala geçerli.
   Future<List<Map<String, dynamic>>> fetchCases() async {
     return await _supabase.from('cases').select().order('created_at', ascending: false);
   }
 
-  Future<List<Map<String, dynamic>>> fetchCharacters(int caseId) async {
-    return await _supabase.from('characters').select().eq('case_id', caseId).order('created_at');
-  }
-
-  Future<List<Map<String, dynamic>>> fetchEvidence(int caseId) async {
-    // GÜNCELLEME: Kanıtları çekerken bağlı olduğu mekanın adını da alıyoruz.
-    return await _supabase.from('evidence').select('*, locations(name)').eq('case_id', caseId).order('created_at');
-  }
-
-  Future<List<Map<String, dynamic>>> fetchLocations(int caseId) async {
-    return await _supabase.from('locations').select().eq('case_id', caseId).order('id');
-  }
-
-  Future<List<Map<String, dynamic>>> fetchInformation(String characterId) async {
-    // GÜNCELLEME: Sırları çekerken, tetikleyici kanıtı ve açtığı mekanı da alıyoruz.
-    return await _supabase.from('information').select('*, triggers(*, evidence(name)), locations(name)').eq('character_id', characterId);
-  }
-
-  // --- Veri Ekleme (INSERT) Fonksiyonları ---
-
+  /// Yeni vaka ekler. Bu fonksiyon hala geçerli.
   Future<void> addCase(String title, String brief) async {
     await _supabase.from('cases').insert({'title': title, 'brief': brief});
   }
-
-  Future<void> addCharacter(int caseId, String name, String basePrompt) async {
-    await _supabase.from('characters').insert({'case_id': caseId, 'name': name, 'base_prompt': basePrompt});
-  }
-
-  Future<void> addLocation(int caseId, String name, String description) async {
-    await _supabase.from('locations').insert({'case_id': caseId, 'name': name, 'description': description});
-  }
-
-  // GÜNCELLEME: Hem yeni kanıt ekleme hem de güncelleme için tek bir fonksiyon.
-  // Bu fonksiyon DialogService tarafından kullanılacak.
-  Future<void> saveEvidence(int caseId, Map<String, dynamic> data) async {
-    final evidenceId = data['id'];
-    if (evidenceId == null) {
-      // ID yoksa, bu yeni bir kanıttır. case_id'yi ekleyip insert yap.
-      data['case_id'] = caseId;
-      await _supabase.from('evidence').insert(data);
-    } else {
-      // ID varsa, bu mevcut bir kanıttır. update yap.
-      await _supabase.from('evidence').update(data).eq('id', evidenceId);
-    }
-  }
-
-  // --- Veri Silme (DELETE) Fonksiyonları ---
-
+  
+  /// Vakayı siler. Bu fonksiyon hala geçerli.
   Future<void> deleteCase(int caseId) async {
     await _supabase.from('cases').delete().match({'id': caseId});
   }
 
-  // --- Veri Güncelleme (UPDATE) Fonksiyonları ---
-
-  // YENİ: Vakanın suçlusunu güncelleyen fonksiyon.
-  Future<Map<String, dynamic>> setCulprit(int caseId, String characterId) async {
-    return await _supabase
-        .from('cases')
-        .update({'culprit_character_id': characterId})
-        .eq('id', caseId)
-        .select()
-        .single();
-  }
-
-  // --- Kompleks Fonksiyonlar ---
-
+  /// Dışa aktarma için tüm vaka verilerini çeker.
+  /// BU FONKSİYONU DAHA SONRA YENİ SİSTEME GÖRE GÜNCELLEYECEĞİZ.
   Future<Map<String, dynamic>> getFullCaseDataForExport(int caseId) async {
-    return await _supabase
+    // 1. Ana vaka bilgisini çek
+    final caseData = await _supabase
         .from('cases')
-        .select('*, characters!case_id(*, information!character_id(*, triggers(*, evidence(id, name, is_red_herring)), locations(name))), evidence(*, locations(name)), locations(*)')
+        .select()
         .eq('id', caseId)
         .single();
+
+    // 2. Vakaya ait tüm düğümleri ve ilişkileri paralel olarak çek
+    final results = await Future.wait([
+      fetchNodesForCase(caseId),
+      fetchRelationshipsForCase(caseId),
+    ]);
+    
+    final nodes = results[0];
+    final relationships = results[1];
+
+    // 3. Final JSON yapısını oluşturmaya başla
+    final finalJson = <String, dynamic>{
+      '_comment': 'Bu vaka dosyası Midnight Confession Editor v2.0 tarafından oluşturulmuştur.',
+      'case_info': {
+        '_comment': 'Vaka hakkındaki temel bilgiler.',
+        'id': caseData['id'],
+        'title': caseData['title'],
+        'brief': caseData['brief'],
+        'culprit_character_id': caseData['culprit_character_id']
+      },
+      'nodes': {
+        '_comment': 'Olay Tahtası\'\'ndaki tüm düğümler (şahıslar, mekanlar, kanıtlar).',
+        // Düğümleri tiplerine göre gruplayalım
+        'characters': nodes.where((n) => n['node_type'] == 'character').toList(),
+        'locations': nodes.where((n) => n['node_type'] == 'location').toList(),
+        'evidence': nodes.where((n) => n['node_type'] == 'evidence').toList(),
+        'information_nodes': nodes.where((n) => n['node_type'] == 'information').toList(),
+      },
+      'relationships': {
+        '_comment': 'Düğümler arasındaki tüm ilişkileri ve bu ilişkilere ait verileri içerir.',
+        'connections': relationships,
+      }
+    };
+
+    return finalJson;
   }
 }

@@ -14,6 +14,7 @@ dependencies:
   # Bağımlılıklar burada, 'dependencies' başlığının altında olmalı.
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.5.0
+  graphview: ^1.2.0
 
 dev_dependencies:
   flutter_test:
